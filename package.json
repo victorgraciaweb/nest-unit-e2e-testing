@@ -4,7 +4,7 @@
   "description": "",
   "author": "Víctor Gracia Magallón",
   "private": true,
-  "license": "UNLICENSED",
+  "license": "MIT",
   "engines": {
     "node": "17.x"
   },
