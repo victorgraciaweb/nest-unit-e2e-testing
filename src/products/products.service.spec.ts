@@ -6,6 +6,8 @@ import { DataSource, Repository } from 'typeorm';
 import { CreateProductDto } from './dto/create-product.dto';
 import { User } from 'src/auth/entities/user.entity';
 import { BadRequestException } from '@nestjs/common';
+import { PaginationDto } from '../common/dtos/pagination.dto';
+import { title } from 'process';
 
 describe('ProductsService', ()=>{
     let service: ProductsService;
@@ -117,6 +119,136 @@ describe('ProductsService', ()=>{
 
             await expect(service.create(dto, user)).rejects.toThrow(BadRequestException);
             await expect(service.create(dto, user)).rejects.toThrow('product already exist');
+        })
+    })
+
+    describe('findAll', ()=>{
+        const mocksProducts = [
+            {
+                id: 'ID1',
+                title: 'product1',
+                price: 10,
+                images: [
+                    { url: 'image1' },
+                    { url: 'image2' }
+                ],
+            },
+            {
+                id: 'ID2',
+                title: 'product2',
+                price: 30,
+                images: [
+                    { url: 'image1' }
+                ],
+            },
+        ] as unknown as Product[];
+
+        it('Should return all products default values', async ()=>{
+            const paginationDto = {
+                limit: 10,
+                offset: 0,
+                gender: 'men'
+            } as PaginationDto;
+
+            jest.spyOn(productRepository, 'find').mockResolvedValue(mocksProducts);
+            jest.spyOn(productRepository, 'count').mockResolvedValue(mocksProducts.length);
+            jest.spyOn(productImageRepository, 'create').mockImplementation((imageData) => imageData as unknown as ProductImage);
+
+            const result = await service.findAll(paginationDto)
+
+            expect(productRepository.find).toHaveBeenCalledWith({
+                take: paginationDto.limit,
+                skip: paginationDto.offset,
+                relations: {
+                    images: true,
+                },
+                order: {
+                    id: 'ASC',
+                },
+                where: [
+                    { gender: paginationDto.gender }, 
+                    { gender: 'unisex' }
+                ],
+            });
+            expect(productRepository.count).toHaveBeenCalledWith({
+                where: paginationDto.gender ? [
+                    { gender: paginationDto.gender }, 
+                    { gender: 'unisex' }
+                ] : {},
+            });
+
+            expect(result).toEqual({
+                count: mocksProducts.length,
+                pages: Math.ceil(mocksProducts.length / paginationDto.limit),
+                products: [
+                    {
+                        id: 'ID1',
+                        title: 'product1',
+                        price: 10,
+                        images: [
+                            'image1',
+                            'image2',
+                        ],
+                    },
+                    {
+                        id: 'ID2',
+                        title: 'product2',
+                        price: 30,
+                        images: [
+                            'image1',
+                        ],
+                    },
+                ],
+            });
+        })
+
+        it('Should return all products', async ()=>{
+            const paginationDto = {} as PaginationDto;
+
+            jest.spyOn(productRepository, 'find').mockResolvedValue(mocksProducts);
+            jest.spyOn(productRepository, 'count').mockResolvedValue(mocksProducts.length);
+            jest.spyOn(productImageRepository, 'create').mockImplementation((imageData) => imageData as unknown as ProductImage);
+
+            const result = await service.findAll(paginationDto)
+
+            expect(productRepository.find).toHaveBeenCalledWith({
+                take: 10,
+                skip: 0,
+                relations: {
+                    images: true,
+                },
+                order: {
+                    id: 'ASC',
+                },
+                where: {},
+            });
+            expect(productRepository.count).toHaveBeenCalledWith({
+                where: {},
+            });
+
+            expect(result).toEqual({
+                count: mocksProducts.length,
+                pages: Math.ceil(mocksProducts.length / 10),
+                products: [
+                    {
+                        id: 'ID1',
+                        title: 'product1',
+                        price: 10,
+                        images: [
+                            'image1',
+                            'image2',
+                        ],
+                    },
+                    {
+                        id: 'ID2',
+                        title: 'product2',
+                        price: 30,
+                        images: [
+                            'image1',
+                        ],
+                    },
+                ],
+            });
         })
     })
 })
