@@ -5,7 +5,6 @@ import { IsArray, IsIn, IsInt, IsNumber, IsOptional,
 
 
 export class CreateProductDto {
-
     @ApiProperty({
         description: 'Product title (unique)',
         nullable: false,
@@ -57,6 +56,4 @@ export class CreateProductDto {
     @IsArray()
     @IsOptional()
     images?: string[];
-
-
 }
