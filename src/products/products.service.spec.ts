@@ -2,26 +2,34 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ProductsService } from './products.service';
 import { Product, ProductImage } from './entities';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, QueryBuilder, Repository } from 'typeorm';
 import { CreateProductDto } from './dto/create-product.dto';
 import { User } from 'src/auth/entities/user.entity';
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { PaginationDto } from '../common/dtos/pagination.dto';
-import { title } from 'process';
+import { UUID } from 'crypto';
+import { UpdateProductDto } from './dto/update-product.dto';
 
 describe('ProductsService', ()=>{
     let service: ProductsService;
     let productRepository: Repository<Product>;
     let productImageRepository: Repository<ProductImage>
+    let mockQueryBuilder: any;
 
     beforeEach(async () => {
+        mockQueryBuilder = {
+            where: jest.fn().mockReturnThis(),
+            leftJoinAndSelect: jest.fn().mockReturnThis(),
+            getOne: jest.fn(),
+        };
+
         const mockProductRepository = {
             create: jest.fn(),
             save: jest.fn(),
             find: jest.fn(),
             count: jest.fn(),
             findOneBy: jest.fn(),
-            createQueryBuilder: jest.fn(),
+            createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
             findOne: jest.fn(),
             preload: jest.fn(),
             remove: jest.fn()
@@ -249,6 +257,96 @@ describe('ProductsService', ()=>{
                     },
                 ],
             });
+        })
+    })
+
+    describe('findOne', ()=>{
+        const id: UUID = '550e8400-e29b-41d4-a716-446655440000';
+        const term: string = 'term';
+        
+        it('Should return a product with valid ID', async ()=>{
+            const mockProduct = {
+                id: 'ID',
+                title: 'product'
+            } as Product
+
+            jest.spyOn(productRepository, 'findOneBy').mockResolvedValue(mockProduct);
+            
+            const result = await service.findOne(id);
+            expect(productRepository.findOneBy).toHaveBeenCalledWith({ id });
+            expect(result).toEqual(mockProduct);
+        })
+
+        it('Should return a NotFoundExcetion error if not exist product with ID sent', async ()=>{
+            jest.spyOn(productRepository, 'findOne').mockResolvedValue(null);
+
+            await expect(service.findOne(id)).rejects.toThrow(NotFoundException);
+            await expect(service.findOne(id)).rejects.toThrow(`Product with ${id} not found`);
+        })
+
+        it('Should return a product by term or slug', async ()=>{
+            const mockProduct = {
+                id: 'ID',
+                title: 'product'
+            } as Product
+
+            jest.spyOn(mockQueryBuilder, 'getOne').mockResolvedValue(mockProduct);
+            
+            const result = await service.findOne(term);
+            expect(result).toEqual(mockProduct);
+        })
+
+        it('Should return a NotFoundExcetion error if not exist product by term or slug', async ()=>{
+            jest.spyOn(mockQueryBuilder, 'getOne').mockResolvedValue(null);
+            
+            await expect(service.findOne(term)).rejects.toThrow(NotFoundException);
+            await expect(service.findOne(term)).rejects.toThrow(`Product with ${term} not found`);
+        })
+    })
+
+    describe('update', ()=>{
+        it('Should throw an error NotFoundException if product not found', async ()=>{
+            const id = 'ID-PRODUCT'; 
+            const dto = {
+                title: 'product',
+                sizes: ['S', 'M'],
+                gender: 'men',
+                tags: ['tag1', 'tag2'],
+                images: ['image1', 'image2']
+            } as UpdateProductDto
+
+            const user = {
+                id: 'ID',
+                email: 'test@gmail.com'
+            } as User
+
+            jest.spyOn(productRepository, 'preload').mockResolvedValue(null);
+            await expect(service.update(id, dto, user)).rejects.toThrow(NotFoundException)
+        })
+
+        it('Should update a product successfully with no images', async ()=>{
+            const id = 'ID-PRODUCT'; 
+            const dto = {
+                title: 'product',
+                sizes: ['S', 'M'],
+                gender: 'men',
+                tags: ['tag1', 'tag2'],
+            } as UpdateProductDto
+
+            const user = {
+                id: 'ID',
+                email: 'test@gmail.com'
+            } as User
+
+            const mockProduct = {
+                ...dto,
+                price: 10.00,
+                description: 'Product description'
+            } as unknown as Product
+
+            jest.spyOn(productRepository, 'preload').mockResolvedValue(mockProduct);
+            jest.spyOn(mockQueryBuilder, 'getOne').mockResolvedValue(mockProduct);
+            const result = await service.update(id, dto, user);
         })
     })
 })
