@@ -341,12 +341,16 @@ describe('ProductsService', ()=>{
             const mockProduct = {
                 ...dto,
                 price: 10.00,
-                description: 'Product description'
+                description: 'Product description',
+                images: []
             } as unknown as Product
 
             jest.spyOn(productRepository, 'preload').mockResolvedValue(mockProduct);
             jest.spyOn(mockQueryBuilder, 'getOne').mockResolvedValue(mockProduct);
+            
             const result = await service.update(id, dto, user);
+
+            expect(result).toEqual(mockProduct)
         })
     })
 })
