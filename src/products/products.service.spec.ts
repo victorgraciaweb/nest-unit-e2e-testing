@@ -5,7 +5,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource, QueryBuilder, Repository } from 'typeorm';
 import { CreateProductDto } from './dto/create-product.dto';
 import { User } from 'src/auth/entities/user.entity';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { PaginationDto } from '../common/dtos/pagination.dto';
 import { UUID } from 'crypto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -15,8 +15,31 @@ describe('ProductsService', ()=>{
     let productRepository: Repository<Product>;
     let productImageRepository: Repository<ProductImage>
     let mockQueryBuilder: any;
+    let mockQueryRunner: {
+        connect: jest.Mock;
+        startTransaction: jest.Mock;
+        manager: {
+            delete: jest.Mock;
+            save: jest.Mock;
+        },
+        commitTransaction: jest.Mock;
+        release: jest.Mock;
+        rollbackTransaction: jest.Mock;
+    }
 
     beforeEach(async () => {
+        mockQueryRunner = {
+            connect: jest.fn(),
+            startTransaction: jest.fn(),
+            manager: {
+                delete: jest.fn(),
+                save: jest.fn(),
+            },
+            commitTransaction: jest.fn(),
+            release: jest.fn(),
+            rollbackTransaction: jest.fn(),
+        }
+
         mockQueryBuilder = {
             where: jest.fn().mockReturnThis(),
             leftJoinAndSelect: jest.fn().mockReturnThis(),
@@ -40,17 +63,7 @@ describe('ProductsService', ()=>{
         }
 
         const mockDataSource = {
-            createQueryRunner: jest.fn().mockReturnValue({
-                connect: jest.fn(),
-                startTransaction: jest.fn(),
-                manager: {
-                    delete: jest.fn(),
-                    save: jest.fn(),
-                },
-                commitTransaction: jest.fn(),
-                release: jest.fn(),
-                rollbackTransaction: jest.fn()
-            })
+            createQueryRunner: jest.fn().mockReturnValue(mockQueryRunner)
         }
 
         const module: TestingModule = await Test.createTestingModule({
@@ -324,7 +337,7 @@ describe('ProductsService', ()=>{
             await expect(service.update(id, dto, user)).rejects.toThrow(NotFoundException)
         })
 
-        it('Should update a product successfully with no images', async ()=>{
+        it('Should update a product successfully', async ()=>{
             const id = 'ID-PRODUCT'; 
             const dto = {
                 title: 'product',
@@ -351,6 +364,80 @@ describe('ProductsService', ()=>{
             const result = await service.update(id, dto, user);
 
             expect(result).toEqual(mockProduct)
+        })
+
+        it('Should update a product successfully and commitTransaction', async ()=>{
+            const id = 'ID-PRODUCT'; 
+            const dto = {
+                title: 'product',
+                sizes: ['S', 'M'],
+                gender: 'men',
+                tags: ['tag1', 'tag2'],
+            } as unknown as UpdateProductDto
+
+            const user = {
+                id: 'ID',
+                email: 'test@gmail.com'
+            } as User
+
+            const mockProduct = {
+                ...dto,
+                price: 10.00,
+                description: 'Product description',
+                images: []
+            } as unknown as Product
+
+            jest.spyOn(productRepository, 'preload').mockResolvedValue(mockProduct);
+            jest.spyOn(mockQueryBuilder, 'getOne').mockResolvedValue(mockProduct);
+            
+            await service.update(id, dto, user);
+
+            expect(mockQueryRunner.connect).toHaveBeenCalled();
+            expect(mockQueryRunner.startTransaction).toHaveBeenCalled();
+            expect(mockQueryRunner.manager.save).toHaveBeenCalledWith(mockProduct);
+            expect(mockQueryRunner.commitTransaction).toHaveBeenCalled();
+            expect(mockQueryRunner.release).toHaveBeenCalled();
+        })
+
+        it('Should throw an error if exist any error during product updating', async ()=>{
+            const id = 'ID-PRODUCT'; 
+            const dto = {
+                title: 'product',
+                sizes: ['S', 'M'],
+                gender: 'men',
+                tags: ['tag1', 'tag2'],
+            } as unknown as UpdateProductDto
+
+            const user = {
+                id: 'ID',
+                email: 'test@gmail.com'
+            } as User
+
+            const mockProduct = {
+                ...dto,
+                price: 10.00,
+                description: 'Product description',
+                images: []
+            } as unknown as Product
+
+            const mockLog = {
+                code: '500',
+                detail: 'Please check server logs',
+            };
+
+            jest.spyOn(productRepository, 'preload').mockResolvedValue(mockProduct);
+            jest.spyOn(mockQueryBuilder, 'getOne').mockResolvedValue(mockProduct);
+            jest.spyOn(mockQueryRunner.manager, 'save').mockRejectedValue(mockLog);
+
+            const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+  
+            await expect(service.update(id, dto, user)).rejects.toThrow(InternalServerErrorException)
+            await expect(service.update(id, dto, user)).rejects.toThrow('Please check server logs')
+            expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalled();
+            expect(mockQueryRunner.release).toHaveBeenCalled();
+            expect(console.log).toHaveBeenCalledWith(mockLog);
+
+            logSpy.mockRestore();
         })
     })
 })
