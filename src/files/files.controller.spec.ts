@@ -3,6 +3,7 @@ import { Response } from 'express';
 import { FilesController } from "./files.controller"
 import { ConfigService } from "@nestjs/config";
 import { FilesService } from "./files.service";
+import { BadRequestException } from "@nestjs/common";
 
 describe('FilesController', ()=>{
     let controller: FilesController;
@@ -56,6 +57,20 @@ describe('FilesController', ()=>{
     })
 
     describe('uploadProductImage', ()=>{
-        
+        it('Should return securUrl and fileName when uploadProductImage is called with valid image', ()=>{
+            const file = {
+                filename: 'file-name.jpg'
+            } as Express.Multer.File;
+
+            const result = controller.uploadProductImage(file);
+            expect(result).toEqual({
+                secureUrl: 'http:localhost:3000/files/product/file-name.jpg',
+                fileName: 'file-name.jpg'
+            });
+        })
+
+        it('Should throw BadRequestException if file was not provided', () => {
+            expect(() => controller.uploadProductImage(null)).toThrow(BadRequestException);
+        });
     })
 })
