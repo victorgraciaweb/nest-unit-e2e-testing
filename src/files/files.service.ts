@@ -3,12 +3,9 @@ import { join } from 'path';
 
 import { Injectable, BadRequestException } from '@nestjs/common';
 
-
 @Injectable()
 export class FilesService {
-  
     getStaticProductImage( imageName: string ) {
-
         const path = join( __dirname, '../../static/products', imageName );
 
         if ( !existsSync(path) ) 
@@ -16,6 +13,4 @@ export class FilesService {
 
         return path;
     }
-
-
 }
