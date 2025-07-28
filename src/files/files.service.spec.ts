@@ -4,14 +4,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { FilesService } from "./files.service"
 
-jest.mock('fs', () => ({
-  existsSync: jest.fn()
-}));
-
-jest.mock('path', () => ({
-  join: jest.fn()
-}));
-
 describe('FilesService', ()=>{
 
     let service: FilesService;
@@ -23,6 +15,10 @@ describe('FilesService', ()=>{
 
         service = module.get<FilesService>(FilesService);
     })
+
+    afterEach(() => {
+        jest.restoreAllMocks();
+    });
 
     it('Should be defined', ()=>{
         expect(service).toBeDefined();
@@ -37,6 +33,7 @@ describe('FilesService', ()=>{
             jest.spyOn(fs, 'existsSync').mockReturnValue(true);
 
             const result = service.getStaticProductImage(filename);
+            
             expect(path.join).toHaveBeenCalledWith(__dirname, '../../static/products', filename);
             expect(fs.existsSync).toHaveBeenCalledWith(expectedPath);
             expect(result).toEqual(expectedPath);
