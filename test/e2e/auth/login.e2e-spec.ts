@@ -18,7 +18,7 @@ const testingAdmin = {
   fullName: 'Test Admin'
 } as User
 
-describe('Auth - login', () => {
+describe('AuthModule - Login (e2e)', () => {
   let app: INestApplication;
   let userRepository: Repository<User>;
 
@@ -41,8 +41,8 @@ describe('Auth - login', () => {
     userRepository = app.get<Repository<User>>(getRepositoryToken(User));
 
     // Removed users if exist
-    userRepository.delete({email: testingUser.email});
-    userRepository.delete({email: testingAdmin.email});
+    await userRepository.delete({email: testingUser.email});
+    await userRepository.delete({email: testingAdmin.email});
 
     // Added user for testing
     await request(app.getHttpServer())
@@ -54,7 +54,7 @@ describe('Auth - login', () => {
     .send(testingAdmin);
 
     // Updated testingAdmin with properly roles ('user') by default
-    userRepository.update(
+    await userRepository.update(
       { email: testingAdmin.email },
       { roles: ['admin'] }
     )
