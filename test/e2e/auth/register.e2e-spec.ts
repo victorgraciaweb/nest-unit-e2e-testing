@@ -83,15 +83,18 @@ describe('AuthModule - Register (e2e)', () => {
     const response = await request(app.getHttpServer())
     .post('/auth/register')
     .send({
-      email: testingUser.email,
+      ...testingUser,
       password: 'no-valid-password',
-      fullName: testingUser.fullName,
     });
 
-    expect(response.status).toEqual(400);
-    expect(response.body.message).toContain(
+    const errorMessages = [
       'The password must have a Uppercase, lowercase letter and a number'
-    );
+    ];
+
+    expect(response.status).toEqual(400);
+    errorMessages.forEach(message => {
+        expect(response.body.message).toContain(message);
+    });
   });
 
   it('/auth/register (POST) - valid credentials', async () => {
@@ -100,5 +103,15 @@ describe('AuthModule - Register (e2e)', () => {
     .send(testingUser);
 
     expect(response.status).toEqual(201);
+    expect(response.body).toEqual({
+      user: {
+          email: testingUser.email,
+          fullName: testingUser.fullName,
+          id: expect.any(String),
+          isActive: true,
+          roles: ['user']
+      },
+      token: expect.any(String)
+    });
   });
 });
