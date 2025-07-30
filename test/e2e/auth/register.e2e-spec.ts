@@ -40,6 +40,9 @@ describe('AuthModule - Register (e2e)', () => {
   afterEach(async () => {
     // Removed users if exist
     await userRepository.delete({email: testingUser.email});
+  });
+
+  afterAll(async () => {
     await app.close();
   });
 
