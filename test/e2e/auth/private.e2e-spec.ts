@@ -90,7 +90,26 @@ describe('AuthModule Private (e2e)', () => {
   });
 
   it('should return custom object if token is valid', async () => {
-    // Validar la respuesta
+    const response = await request(app.getHttpServer())
+      .get('/auth/private')
+      .set('Authorization', `Bearer ${tokenUser}`);
+      
+    expect(response.body).toMatchObject({
+      'ok': true,
+      'message': 'Hola Mundo Private',
+      'user': {
+          'id': expect.any(String),
+          'email': testingUser.email,
+          'fullName': testingUser.fullName,
+          'isActive': true,
+          'roles': [
+              'user'
+          ]
+      },
+      'userEmail': testingUser.email,
+      'rawHeaders': expect.any(Array),
+      'headers': expect.any(Object)
+    });
   });
 
   it('should return 401 if admin token is provided', async () => {
