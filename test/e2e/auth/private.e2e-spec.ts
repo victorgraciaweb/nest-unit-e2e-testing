@@ -54,6 +54,11 @@ describe('AuthModule Private (e2e)', () => {
         .post('/auth/register')
         .send(testingAdmin);
 
+    await userRepository.update(
+      { email: testingAdmin.email },
+      { roles: ['admin'] }
+    );
+
     tokenUser = responseUser.body.token;
     tokenAdmin = responseAdmin.body.token;
   });
@@ -76,7 +81,7 @@ describe('AuthModule Private (e2e)', () => {
     await new Promise((resolve) =>{
         setTimeout(()=>{
             resolve(true);
-        }, 800)
+        }, 1000)
     })
 
     const response = await request(app.getHttpServer())
@@ -89,7 +94,7 @@ describe('AuthModule Private (e2e)', () => {
       expect(responseToken).not.toEqual(tokenUser);
   });
 
-  it('should return custom object if token is valid', async () => {
+  it('should return custom object if any token is valid', async () => {
     const response = await request(app.getHttpServer())
       .get('/auth/private')
       .set('Authorization', `Bearer ${tokenUser}`);
@@ -112,13 +117,32 @@ describe('AuthModule Private (e2e)', () => {
     });
   });
 
-  it('should return 401 if admin token is provided', async () => {
+  it('should return 403 if token is provided but no admin token', async () => {
     const response = await request(app.getHttpServer())
       .get('/auth/private3')
+      .set('Authorization', `Bearer ${tokenUser}`);
+
+    expect(response.status).toEqual(403)
   });
 
   it('should return user if admin token is provided', async () => {
     const response = await request(app.getHttpServer())
       .get('/auth/private3')
+      .set('Authorization', `Bearer ${tokenAdmin}`);
+
+    const userId = response.body.user.id;  
+
+    expect(response.status).toEqual(200);
+    expect(validate(userId)).toBe(true);
+    expect(response.body).toEqual({
+      ok: true,
+      user: {
+        id: expect.any(String),
+        email: testingAdmin.email,
+        fullName: testingAdmin.fullName,
+        isActive: true,
+        roles: [ 'admin' ]
+      }
+    });
   });
 });
