@@ -82,7 +82,7 @@ describe('Main.ts', () => {
   it('should set global prefix', async () => {
     await bootstrap();
 
-    expect(mockApp.setGlobalPrefix).toHaveBeenCalledWith('api');
+    expect(mockApp.setGlobalPrefix).toHaveBeenCalledWith('api/v1');
   });
 
   it('should use global pipes', async () => {

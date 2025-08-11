@@ -1,5 +1,5 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { BadRequestException } from "@nestjs/common";
+import { NotFoundException } from "@nestjs/common";
 import * as fs from 'fs';
 import * as path from 'path';
 import { FilesService } from "./files.service"
@@ -39,11 +39,11 @@ describe('FilesService', ()=>{
             expect(result).toEqual(expectedPath);
         })
 
-        it('Should return BadRequestException if image route not exist', ()=>{
+        it('Should return NotFoundException if image route not exist', ()=>{
             jest.spyOn(path, 'join').mockReturnValue(expectedPath);
             jest.spyOn(fs, 'existsSync').mockReturnValue(false);
 
-            expect(() => service.getStaticProductImage(filename)).toThrow(BadRequestException);
+            expect(() => service.getStaticProductImage(filename)).toThrow(NotFoundException);
         })
     })
 })
