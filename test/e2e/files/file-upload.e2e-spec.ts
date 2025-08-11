@@ -70,4 +70,16 @@ describe('FilesModule - (e2e)', () => {
     expect(fileExists).toBeTruthy();
     unlinkSync(filePath);
   });
+
+  it('Should throw a 404 error if file not found', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/files/product/no-image.jpg')
+
+    expect(response.status).toEqual(404);
+    expect(response.body).toEqual({
+        message: 'No product found with image no-image.jpg',
+        error: 'Not Found',
+        statusCode: 404
+    });
+  })
 });
